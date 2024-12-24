@@ -113,12 +113,12 @@ public:
                  2 * figure[size - 2][size - 1] + figure[size - 2][size - 2]) /
                 9;
 
-        for (size_t i = 0; i < size; ++i) {
-            for (size_t j = 0; j < size; ++j) {
-                std::cout << static_cast<int>(result[i][j]) << " ";
-            }
-            std::cout << "\n";
-        }
+        // for (size_t i = 0; i < size; ++i) {
+        //     for (size_t j = 0; j < size; ++j) {
+        //         std::cout << static_cast<int>(result[i][j]) << " ";
+        //     }
+        //     std::cout << "\n";
+        // }
     }
 
     // Power law transformation
@@ -177,7 +177,7 @@ public:
 // Main function
 // !!! Please do not modify the main function !!!
 int main(int argc, const char **argv) {
-    constexpr size_t size = 10;
+    constexpr size_t size = 16384;
     FigureProcessor processor(size, argc > 1 ? std::stoul(argv[1]) : 0);
     processor.runBenchmark();
     return 0;
