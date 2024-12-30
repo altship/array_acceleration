@@ -7,6 +7,9 @@
 #include <vector>
 #include <algorithm>
 #include <vectorclass/vectorclass.h>
+#include <omp.h>
+
+#define GAMMA 0.5f
 
 using std::vector;
 
@@ -90,64 +93,64 @@ public:
     //Hint: You can use SIMD instructions to optimize this function
     void gaussianFilter() {
         // 处理内部区域
-        unsigned short* row1 = new unsigned short[size + 2];
-        unsigned short* row2 = new unsigned short[size + 2];
-        unsigned short* row3 = new unsigned short[size + 2];
+        // unsigned short* row1 = new unsigned short[size + 2];
+        // unsigned short* row2 = new unsigned short[size + 2];
+        // unsigned short* row3 = new unsigned short[size + 2];
 
-        convert_uchar_to_ushort(figure[0], row1, size + 2);
-        convert_uchar_to_ushort(figure[1], row2, size + 2);
-        convert_uchar_to_ushort(figure[2], row3, size + 2);
+        // convert_uchar_to_ushort(figure[0], row1, size + 2);
+        // convert_uchar_to_ushort(figure[1], row2, size + 2);
+        // convert_uchar_to_ushort(figure[2], row3, size + 2);
         
-        Vec16us vec[9];
-        Vec16us ker[9];
-        Vec16us res(0);
-        ker[0] = ker[2] = ker[6] = ker[8] = Vec16us(1);
-        ker[1] = ker[3] = ker[5] = ker[7] = Vec16us(2);
-        ker[4] = Vec16us(4);
+        // Vec16us vec[9];
+        // Vec16us ker[9];
+        // Vec16us res(0);
+        // ker[0] = ker[2] = ker[6] = ker[8] = Vec16us(1);
+        // ker[1] = ker[3] = ker[5] = ker[7] = Vec16us(2);
+        // ker[4] = Vec16us(4);
 
-        for (size_t i = 0; i < size; i += 16) {
-            for (size_t j = 0; j < 3; j++) {
-                vec[j].load(row1 + i + j);
-                vec[j + 3].load(row2 + i + j);
-                vec[j + 6].load(row3 + i + j);
-            }
+        // for (size_t i = 0; i < size; i += 16) {
+        //     for (size_t j = 0; j < 3; j++) {
+        //         vec[j].load(row1 + i + j);
+        //         vec[j + 3].load(row2 + i + j);
+        //         vec[j + 6].load(row3 + i + j);
+        //     }
             
-            res = 0;            
-            for (size_t j = 0; j < 9; j++) {
-                res += vec[j] * ker[j];
-            }
-            res = res / 16;
-            res.store(row1 + i);
-        }
+        //     res = 0;            
+        //     for (size_t j = 0; j < 9; j++) {
+        //         res += vec[j] * ker[j];
+        //     }
+        //     res = res / 16;
+        //     res.store(row1 + i);
+        // }
 
-        convert_ushort_to_uchar(row1, result[0], size);
+        // convert_ushort_to_uchar(row1, result[0], size);
 
-        for (size_t k = 1; k < size; k++) {
-            memcpy(row1, row2, sizeof(unsigned short) * (size + 2));
-            memcpy(row2, row3, sizeof(unsigned short) * (size + 2));
-            convert_uchar_to_ushort(figure[k + 2], row3, size + 2);
+        // for (size_t k = 1; k < size; k++) {
+        //     memcpy(row1, row2, sizeof(unsigned short) * (size + 2));
+        //     memcpy(row2, row3, sizeof(unsigned short) * (size + 2));
+        //     convert_uchar_to_ushort(figure[k + 2], row3, size + 2);
 
-            for (size_t i = 0; i < size; i += 16) {
-                for (size_t j = 0; j < 3; j++) {
-                    vec[j].load(row1 + i + j);
-                    vec[j + 3].load(row2 + i + j);
-                    vec[j + 6].load(row3 + i + j);
-                }
+        //     for (size_t i = 0; i < size; i += 16) {
+        //         for (size_t j = 0; j < 3; j++) {
+        //             vec[j].load(row1 + i + j);
+        //             vec[j + 3].load(row2 + i + j);
+        //             vec[j + 6].load(row3 + i + j);
+        //         }
                 
-                res = 0;            
-                for (size_t j = 0; j < 9; j++) {
-                    res += vec[j] * ker[j];
-                }
-                res = res / 16;
-                res.store(row1 + i);
-            }
+        //         res = 0;            
+        //         for (size_t j = 0; j < 9; j++) {
+        //             res += vec[j] * ker[j];
+        //         }
+        //         res = res / 16;
+        //         res.store(row1 + i);
+        //     }
 
-            convert_ushort_to_uchar(row1, result[k], size);
-        }
+        //     convert_ushort_to_uchar(row1, result[k], size);
+        // }
 
-        delete[] row1;
-        delete[] row2;
-        delete[] row3;
+        // delete[] row1;
+        // delete[] row2;
+        // delete[] row3;
 
 
 
@@ -189,17 +192,18 @@ public:
         //         res.store(result[k] + i);
         //     }
         // }
-
-        // for (size_t i = 1; i < size + 1; ++i) {
-        //     for (size_t j = 1; j < size + 1; ++j) {
-        //         result[i - 1][j - 1] =
-        //                 (figure[i - 1][j - 1] + 2 * figure[i - 1][j] +
-        //                  figure[i - 1][j + 1] + 2 * figure[i][j - 1] + 4 * figure[i][j] +
-        //                  2 * figure[i][j + 1] + figure[i + 1][j - 1] +
-        //                  2 * figure[i + 1][j] + figure[i + 1][j + 1]) /
-        //                 16;
-        //     }
-        // }
+        omp_set_num_threads(4);
+#pragma omp parallel for
+        for (size_t i = 1; i < size + 1; ++i) {
+            for (size_t j = 1; j < size + 1; ++j) {
+                result[i - 1][j - 1] =
+                        (figure[i - 1][j - 1] + 2 * figure[i - 1][j] +
+                         figure[i - 1][j + 1] + 2 * figure[i][j - 1] + 4 * figure[i][j] +
+                         2 * figure[i][j + 1] + figure[i + 1][j - 1] +
+                         2 * figure[i + 1][j] + figure[i + 1][j + 1]) /
+                        16;
+            }
+        }
 
         // for (size_t i = 1; i < size - 1; ++i) {
         //     result[i][0] =
@@ -267,19 +271,31 @@ public:
     // FIXME: Feel free to optimize this function
     // Hint: LUT to optimize this function?
     void powerLawTransformation() {
-        constexpr float gamma = 0.5f;
-        
-        for (size_t i = 1; i < size + 1; ++i) {
-            for (size_t j = 1; j < size + 1; ++j) {
-                if(figure[i][j] == 0) {
-                    result[i - 1][j - 1] = 0;
-                    continue;
-                }
-                float normalized = (figure[i][j]) / 255.0f;
-                result[i - 1][j - 1] = static_cast<unsigned char>(
-                        255.0f * std::pow(normalized, gamma) + 0.5f); 
+        // constexpr float gamma = 0.5f;
+        unsigned char lut[256] = {0};
+
+        for (size_t i = 1; i < 256; ++i) {
+            float normalized = i / 255.0f;
+            lut[i] = static_cast<unsigned char>(255.0f * std::pow(normalized, GAMMA) + 0.5f);
+        }
+
+        for (size_t i = 0; i < size; ++i) {
+            for (size_t j = 0; j < size; ++j) {
+                result[i][j] = lut[figure[i + 1][j + 1]];
             }
         }
+        
+        // for (size_t i = 1; i < size + 1; ++i) {
+        //     for (size_t j = 1; j < size + 1; ++j) {
+        //         if(figure[i][j] == 0) {
+        //             result[i - 1][j - 1] = 0;
+        //             continue;
+        //         }
+        //         float normalized = (figure[i][j]) / 255.0f;
+        //         result[i - 1][j - 1] = static_cast<unsigned char>(
+        //                 255.0f * std::pow(normalized, gamma) + 0.5f); 
+        //     }
+        // }
     }
 
 
