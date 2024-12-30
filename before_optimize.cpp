@@ -32,6 +32,13 @@ public:
             }
         }
 
+        // for (size_t i = 0; i < size; ++i) {
+        //     for (size_t j = 0; j < size; ++j) {
+        //         std::cout << static_cast<int>(figure[i][j]) << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
+
         for (size_t i = 0; i < size; ++i) {
             result.push_back(vector<unsigned char>());
             for (size_t j = 0; j < size; ++j) {

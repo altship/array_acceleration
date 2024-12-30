@@ -1,7 +1,7 @@
 CC = g++
-CFLAGS = -g -Wall -O0 -std=c++23 -mavx2 -march=native -fopenmp
+CFLAGS = -g -Wall -O0 -std=c++23 -mavx2 -march=native -fopenmp -I.
 
-.DEFAULT_GOAL := before_optimize
+.DEFAULT_GOAL := after_optimize
 .PHONY: clean
 
 all: before_optimize after_optimize

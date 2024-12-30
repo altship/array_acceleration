@@ -5,8 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <algorithm>
+#include <vectorclass/vectorclass.h>
 
 using std::vector;
+
+inline void convert_uchar_to_ushort(const unsigned char* input, unsigned short* output, size_t size);
+inline void convert_ushort_to_uchar(const unsigned short* input, unsigned char* output, size_t size);
 
 class FigureProcessor {
 private:
@@ -36,14 +41,21 @@ public:
         //     }
         // }
 
-        figure = new unsigned char*[size];
+        figure = new unsigned char*[size + 2];
+        for (size_t i = 0; i < size + 2; ++i) {
+            figure[i] = new unsigned char[size + 2];
+        }
         // Filling the matrix area.
-        for (size_t i = 0; i < size; ++i) {
-            figure[i] = new unsigned char[size];
-            for (size_t j = 0; j < size; ++j) {
+        for (size_t i = 1; i < size + 1; ++i) {
+            figure[i][0] = figure[i][1] = static_cast<unsigned char>(distribution(gen));
+            for (size_t j = 2; j < size + 1; ++j) {
                 figure[i][j] = static_cast<unsigned char>(distribution(gen));
             }
+            figure[i][size + 1] = figure[i][size];
         }
+        memcpy(figure[0], figure[1], sizeof(unsigned char) * (size + 2));
+        memcpy(figure[size + 1], figure[size], sizeof(unsigned char) * (size + 2));
+
         // for (size_t i = 0; i < size + 2; ++i) {
         //     for (size_t j = 0; j < size + 2; ++j) {
         //         std::cout << static_cast<int>(figure[i][j]) << " ";
@@ -78,69 +90,169 @@ public:
     //Hint: You can use SIMD instructions to optimize this function
     void gaussianFilter() {
         // 处理内部区域
-        for (size_t i = 1; i < size - 1; ++i) {
-            for (size_t j = 1; j < size - 1; ++j) {
-                result[i][j] =
-                        (figure[i - 1][j - 1] + 2 * figure[i - 1][j] +
-                         figure[i - 1][j + 1] + 2 * figure[i][j - 1] + 4 * figure[i][j] +
-                         2 * figure[i][j + 1] + figure[i + 1][j - 1] +
-                         2 * figure[i + 1][j] + figure[i + 1][j + 1]) /
-                        16;
+        unsigned short* row1 = new unsigned short[size + 2];
+        unsigned short* row2 = new unsigned short[size + 2];
+        unsigned short* row3 = new unsigned short[size + 2];
+
+        convert_uchar_to_ushort(figure[0], row1, size + 2);
+        convert_uchar_to_ushort(figure[1], row2, size + 2);
+        convert_uchar_to_ushort(figure[2], row3, size + 2);
+        
+        Vec16us vec[9];
+        Vec16us ker[9];
+        Vec16us res(0);
+        ker[0] = ker[2] = ker[6] = ker[8] = Vec16us(1);
+        ker[1] = ker[3] = ker[5] = ker[7] = Vec16us(2);
+        ker[4] = Vec16us(4);
+
+        for (size_t i = 0; i < size; i += 16) {
+            for (size_t j = 0; j < 3; j++) {
+                vec[j].load(row1 + i + j);
+                vec[j + 3].load(row2 + i + j);
+                vec[j + 6].load(row3 + i + j);
             }
+            
+            res = 0;            
+            for (size_t j = 0; j < 9; j++) {
+                res += vec[j] * ker[j];
+            }
+            res = res / 16;
+            res.store(row1 + i);
         }
 
-        for (size_t i = 1; i < size - 1; ++i) {
-            result[i][0] =
-                    (figure[i - 1][0] + 2 * figure[i - 1][0] + figure[i - 1][1] +
-                     2 * figure[i][0] + 4 * figure[i][0] + 2 * figure[i][1] +
-                     figure[i + 1][0] + 2 * figure[i + 1][0] + figure[i + 1][1]) /
-                    16;
+        convert_ushort_to_uchar(row1, result[0], size);
 
-            result[i][size - 1] =
-                    (figure[i - 1][size - 2] + 2 * figure[i - 1][size - 1] +
-                     figure[i - 1][size - 1] + 2 * figure[i][size - 2] +
-                     4 * figure[i][size - 1] + 2 * figure[i][size - 1] +
-                     figure[i + 1][size - 2] + 2 * figure[i + 1][size - 1] +
-                     figure[i + 1][size - 1]) /
-                    16;
+        for (size_t k = 1; k < size; k++) {
+            memcpy(row1, row2, sizeof(unsigned short) * (size + 2));
+            memcpy(row2, row3, sizeof(unsigned short) * (size + 2));
+            convert_uchar_to_ushort(figure[k + 2], row3, size + 2);
+
+            for (size_t i = 0; i < size; i += 16) {
+                for (size_t j = 0; j < 3; j++) {
+                    vec[j].load(row1 + i + j);
+                    vec[j + 3].load(row2 + i + j);
+                    vec[j + 6].load(row3 + i + j);
+                }
+                
+                res = 0;            
+                for (size_t j = 0; j < 9; j++) {
+                    res += vec[j] * ker[j];
+                }
+                res = res / 16;
+                res.store(row1 + i);
+            }
+
+            convert_ushort_to_uchar(row1, result[k], size);
         }
 
-        for (size_t j = 1; j < size - 1; ++j) {
-            result[0][j] =
-                    (figure[0][j - 1] + 2 * figure[0][j] + figure[0][j + 1] +
-                     2 * figure[0][j - 1] + 4 * figure[0][j] + 2 * figure[0][j + 1] +
-                     figure[1][j - 1] + 2 * figure[1][j] + figure[1][j + 1]) /
-                    16;
+        delete[] row1;
+        delete[] row2;
+        delete[] row3;
 
-            result[size - 1][j] =
-                    (figure[size - 2][j - 1] + 2 * figure[size - 2][j] +
-                     figure[size - 2][j + 1] + 2 * figure[size - 1][j - 1] +
-                     4 * figure[size - 1][j] + 2 * figure[size - 1][j + 1] +
-                     figure[size - 1][j - 1] + 2 * figure[size - 1][j] +
-                     figure[size - 1][j + 1]) /
-                    16;
-        }
+
+
+        // Vec32uc vec[9];
+        // Vec32uc ker[9];
+        // Vec32uc res(0);
+        // ker[0] = ker[2] = ker[6] = ker[8] = Vec32uc(1);
+        // ker[1] = ker[3] = ker[5] = ker[7] = Vec32uc(2);
+        // ker[4] = Vec32uc(4);
+
+        // for (size_t i = 0; i < size; i += 32) {
+        //     for (size_t j = 0; j < 3; j++) {
+        //         vec[j].load(figure[0] + i + j);
+        //         vec[j + 3].load(figure[1] + i + j);
+        //         vec[j + 6].load(figure[2] + i + j);
+        //     }
+            
+        //     res = 0;            
+        //     for (size_t j = 0; j < 9; j++) {
+        //         res += vec[j] * ker[j];
+        //     }
+        //     res = res / 16;
+        //     res.store(result[0] + i);
+        // }
+
+        // for (size_t k = 1; k < size; k++) {
+        //     for (size_t i = 0; i < size; i += 32) {
+        //         for (size_t j = 0; j < 3; j++) {
+        //             vec[j].load(figure[k] + i + j);
+        //             vec[j + 3].load(figure[k + 1] + i + j);
+        //             vec[j + 6].load(figure[k + 2] + i + j);
+        //         }
+                
+        //         res = 0;            
+        //         for (size_t j = 0; j < 9; j++) {
+        //             res += vec[j] * ker[j];
+        //         }
+        //         res = res / 16;
+        //         res.store(result[k] + i);
+        //     }
+        // }
+
+        // for (size_t i = 1; i < size + 1; ++i) {
+        //     for (size_t j = 1; j < size + 1; ++j) {
+        //         result[i - 1][j - 1] =
+        //                 (figure[i - 1][j - 1] + 2 * figure[i - 1][j] +
+        //                  figure[i - 1][j + 1] + 2 * figure[i][j - 1] + 4 * figure[i][j] +
+        //                  2 * figure[i][j + 1] + figure[i + 1][j - 1] +
+        //                  2 * figure[i + 1][j] + figure[i + 1][j + 1]) /
+        //                 16;
+        //     }
+        // }
+
+        // for (size_t i = 1; i < size - 1; ++i) {
+        //     result[i][0] =
+        //             (figure[i - 1][0] + 2 * figure[i - 1][0] + figure[i - 1][1] +
+        //              2 * figure[i][0] + 4 * figure[i][0] + 2 * figure[i][1] +
+        //              figure[i + 1][0] + 2 * figure[i + 1][0] + figure[i + 1][1]) /
+        //             16;
+
+        //     result[i][size - 1] =
+        //             (figure[i - 1][size - 2] + 2 * figure[i - 1][size - 1] +
+        //              figure[i - 1][size - 1] + 2 * figure[i][size - 2] +
+        //              4 * figure[i][size - 1] + 2 * figure[i][size - 1] +
+        //              figure[i + 1][size - 2] + 2 * figure[i + 1][size - 1] +
+        //              figure[i + 1][size - 1]) /
+        //             16;
+        // }
+
+        // for (size_t j = 1; j < size - 1; ++j) {
+        //     result[0][j] =
+        //             (figure[0][j - 1] + 2 * figure[0][j] + figure[0][j + 1] +
+        //              2 * figure[0][j - 1] + 4 * figure[0][j] + 2 * figure[0][j + 1] +
+        //              figure[1][j - 1] + 2 * figure[1][j] + figure[1][j + 1]) /
+        //             16;
+
+        //     result[size - 1][j] =
+        //             (figure[size - 2][j - 1] + 2 * figure[size - 2][j] +
+        //              figure[size - 2][j + 1] + 2 * figure[size - 1][j - 1] +
+        //              4 * figure[size - 1][j] + 2 * figure[size - 1][j + 1] +
+        //              figure[size - 1][j - 1] + 2 * figure[size - 1][j] +
+        //              figure[size - 1][j + 1]) /
+        //             16;
+        // }
 
         // 处理四个角点
         // 左上角
-        result[0][0] = (4 * figure[0][0] + 2 * figure[0][1] + 2 * figure[1][0] +
-                                        figure[1][1]) /
+        result[0][0] = (4 * figure[1][1] + 2 * figure[1][2] + 2 * figure[2][1] +
+                                        figure[2][2]) /
                                      9; 
 
         // 右上角
-        result[0][size - 1] = (4 * figure[0][size - 1] + 2 * figure[0][size - 2] +
-                                                     2 * figure[1][size - 1] + figure[1][size - 2]) /
+        result[0][size - 1] = (4 * figure[1][size] + 2 * figure[1][size - 1] +
+                                                     2 * figure[2][size] + figure[2][size - 1]) /
                                                     9;
 
         // 左下角
-        result[size - 1][0] = (4 * figure[size - 1][0] + 2 * figure[size - 1][1] +
-                                                     2 * figure[size - 2][0] + figure[size - 2][1]) /
+        result[size - 1][0] = (4 * figure[size][1] + 2 * figure[size][2] +
+                                                     2 * figure[size - 1][1] + figure[size - 1][2]) /
                                                     9;
 
         // 右下角
         result[size - 1][size - 1] =
-                (4 * figure[size - 1][size - 1] + 2 * figure[size - 1][size - 2] +
-                 2 * figure[size - 2][size - 1] + figure[size - 2][size - 2]) /
+                (4 * figure[size][size] + 2 * figure[size][size - 1] +
+                 2 * figure[size - 1][size] + figure[size - 1][size - 1]) /
                 9;
         // for (size_t i = 0; i < size; ++i) {
         //     for (size_t j = 0; j < size; ++j) {
@@ -157,14 +269,14 @@ public:
     void powerLawTransformation() {
         constexpr float gamma = 0.5f;
         
-        for (size_t i = 0; i < size; ++i) {
-            for (size_t j = 0; j < size; ++j) {
+        for (size_t i = 1; i < size + 1; ++i) {
+            for (size_t j = 1; j < size + 1; ++j) {
                 if(figure[i][j] == 0) {
-                    result[i][j] = 0;
+                    result[i - 1][j - 1] = 0;
                     continue;
                 }
                 float normalized = (figure[i][j]) / 255.0f;
-                result[i][j] = static_cast<unsigned char>(
+                result[i - 1][j - 1] = static_cast<unsigned char>(
                         255.0f * std::pow(normalized, gamma) + 0.5f); 
             }
         }
@@ -206,6 +318,14 @@ public:
         std::cout << "Benchmark time: " << milliseconds.count() << " ms\n";
     }
 };
+
+inline void convert_uchar_to_ushort(const unsigned char* input, unsigned short* output, size_t size) {
+    std::transform(input, input + size, output, [](unsigned char x) { return static_cast<unsigned short>(x); });
+}
+
+inline void convert_ushort_to_uchar(const unsigned short* input, unsigned char* output, size_t size) {
+    std::transform(input, input + size, output, [](unsigned short x) { return static_cast<unsigned char>(x); });
+}
 
 
 // Main function
