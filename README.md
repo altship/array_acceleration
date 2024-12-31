@@ -13,7 +13,7 @@ Optional Header:
 - Vectorclass: https://github.com/vectorclass/version2
     - This is a modern vector calculation library that uses modern X86 CPU's SIMD technology and protect you from directly get into CPU Intrinsics.
 
-    - Although the final code is not intended to use this library due to high memory latency, I have tried many interesting things with it, so it will be kept and you can have some fun with my last but one commit(you can find it by my commit message) and that reserved all the things I tried.
+    - Although the final code is not intended to use this library due to high memory latency, I have tried many interesting things with it, so it will be kept and you can have some fun branch "playground" and that reserved all the things I tried.
 
 `im2col.py` you might see in previous commit: A efficient way to do the image to convolution suitable matrix transformation done by Stanford CS231N course member, pasted here is only for reference. It is also a interesting algorithm.
 Website:https://cs231n.github.io/assignments2024/assignment2/
