@@ -6,13 +6,12 @@
 #include <string.h>
 #include <vector>
 #include <algorithm>
-#include <vectorclass/vectorclass.h>
 #include <omp.h>
+
+using std::vector;
 
 // Using define rather than variable will be more efficient. ~10ms faster.
 #define GAMMA 0.5f
-
-using std::vector;
 
 class FigureProcessor {
 private:
@@ -91,7 +90,7 @@ public:
             }
         }
 
-        // Four corners are calculated again separately due to different way of averaging.
+        // Four corners are calculated again separately due to different way of convolution.
         // There is no need to avoid calculating these point in previous code, introducing branch is no a wise decision.
         // 处理四个角点
         // 左上角
