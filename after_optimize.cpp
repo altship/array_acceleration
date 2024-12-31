@@ -2,13 +2,8 @@
 #include <cstddef>
 #include <iostream>
 #include <random>
-#include <stdlib.h>
 #include <string.h>
-#include <vector>
-#include <algorithm>
 #include <omp.h>
-
-using std::vector;
 
 // Using define rather than variable will be more efficient. ~10ms faster.
 #define GAMMA 0.5f
