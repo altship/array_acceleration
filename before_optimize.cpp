@@ -32,13 +32,6 @@ public:
             }
         }
 
-        // for (size_t i = 0; i < size; ++i) {
-        //     for (size_t j = 0; j < size; ++j) {
-        //         std::cout << static_cast<int>(figure[i][j]) << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
-
         for (size_t i = 0; i < size; ++i) {
             result.push_back(vector<unsigned char>());
             for (size_t j = 0; j < size; ++j) {
@@ -119,13 +112,6 @@ public:
                 (4 * figure[size - 1][size - 1] + 2 * figure[size - 1][size - 2] +
                  2 * figure[size - 2][size - 1] + figure[size - 2][size - 2]) /
                 9;
-
-        // for (size_t i = 0; i < size; ++i) {
-        //     for (size_t j = 0; j < size; ++j) {
-        //         std::cout << static_cast<int>(result[i][j]) << " ";
-        //     }
-        //     std::cout << "\n";
-        // }
     }
 
     // Power law transformation

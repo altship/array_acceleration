@@ -9,12 +9,14 @@
 #include <vectorclass/vectorclass.h>
 #include <omp.h>
 
+// Using define rather than variable will be more efficient. ~10ms faster.
 #define GAMMA 0.5f
 
 using std::vector;
 
-inline void convert_uchar_to_ushort(const unsigned char* input, unsigned short* output, size_t size);
-inline void convert_ushort_to_uchar(const unsigned short* input, unsigned char* output, size_t size);
+// // These conversion only used in SIMD method.
+// inline void convert_uchar_to_ushort(const unsigned char* input, unsigned short* output, size_t size);
+// inline void convert_ushort_to_uchar(const unsigned short* input, unsigned char* output, size_t size);
 
 class FigureProcessor {
 private:
@@ -44,6 +46,8 @@ public:
         //     }
         // }
 
+        // Reorganize the memory layout to using continueous memory to improve cache performance.
+        // Also add padding to the matrix to avoid boundary check, slightly using extra time here but not obvious
         figure = new unsigned char*[size + 2];
         for (size_t i = 0; i < size + 2; ++i) {
             figure[i] = new unsigned char[size + 2];
@@ -56,6 +60,7 @@ public:
             }
             figure[i][size + 1] = figure[i][size];
         }
+        // Filling the padding area by using memcpy, this is much faster.
         memcpy(figure[0], figure[1], sizeof(unsigned char) * (size + 2));
         memcpy(figure[size + 1], figure[size], sizeof(unsigned char) * (size + 2));
 
@@ -75,6 +80,7 @@ public:
 
 
     ~FigureProcessor() {
+        // explicit release the matrix memory
         for (size_t i = 0; i < size + 2; ++i) {
             delete[] figure[i];
         }
@@ -89,10 +95,9 @@ public:
 
     // Gaussian filter
     // [[1, 2, 1], [2, 4, 2], [1, 2, 1]] / 16
-    //FIXME: Feel free to optimize this function
-    //Hint: You can use SIMD instructions to optimize this function
     void gaussianFilter() {
-        // 处理内部区域
+        // // Here are some code snippets for using SIMD instructions to optimize this function.
+        // // This one is using type conversion for unsigned char to unsigned short for avoiding overflow.
         // unsigned short* row1 = new unsigned short[size + 2];
         // unsigned short* row2 = new unsigned short[size + 2];
         // unsigned short* row3 = new unsigned short[size + 2];
@@ -153,7 +158,9 @@ public:
         // delete[] row3;
 
 
-
+        // // This one is using Vec32uc to load the data, and using Vec32uc to store the result.
+        // // Be cautions that doing 8bit arithmatic add is slow. For more, see the vectorclass manuel.
+        // // No type conversion is used here, severe overflow occured here.
         // Vec32uc vec[9];
         // Vec32uc ker[9];
         // Vec32uc res(0);
@@ -192,6 +199,9 @@ public:
         //         res.store(result[k] + i);
         //     }
         // }
+        
+        // Calculating all the matrix area.
+        // Here only rewrite the code for concise(by using padding created above), the calculation is the same as old.
         omp_set_num_threads(4);
 #pragma omp parallel for
         for (size_t i = 1; i < size + 1; ++i) {
@@ -237,6 +247,8 @@ public:
         //             16;
         // }
 
+        // Four corners are calculated again separately due to different way of averaging.
+        // There is no need to avoid calculating these point in previous code, introducing branch is no a wise decision.
         // 处理四个角点
         // 左上角
         result[0][0] = (4 * figure[1][1] + 2 * figure[1][2] + 2 * figure[2][1] +
@@ -268,10 +280,10 @@ public:
 
 
     // Power law transformation
-    // FIXME: Feel free to optimize this function
-    // Hint: LUT to optimize this function?
     void powerLawTransformation() {
         // constexpr float gamma = 0.5f;
+
+        // Using LUT to optimize the power law transformation.
         unsigned char lut[256] = {0};
 
         for (size_t i = 1; i < 256; ++i) {
@@ -279,6 +291,8 @@ public:
             lut[i] = static_cast<unsigned char>(255.0f * std::pow(normalized, GAMMA) + 0.5f);
         }
 
+        omp_set_num_threads(4);
+#pragma omp parallel for
         for (size_t i = 0; i < size; ++i) {
             for (size_t j = 0; j < size; ++j) {
                 result[i][j] = lut[figure[i + 1][j + 1]];
@@ -335,13 +349,16 @@ public:
     }
 };
 
-inline void convert_uchar_to_ushort(const unsigned char* input, unsigned short* output, size_t size) {
-    std::transform(input, input + size, output, [](unsigned char x) { return static_cast<unsigned short>(x); });
-}
 
-inline void convert_ushort_to_uchar(const unsigned short* input, unsigned char* output, size_t size) {
-    std::transform(input, input + size, output, [](unsigned short x) { return static_cast<unsigned char>(x); });
-}
+// // These conversion only used in SIMD method.
+// // Using inline function to avoid function call overhead.
+// inline void convert_uchar_to_ushort(const unsigned char* input, unsigned short* output, size_t size) {
+//     std::transform(input, input + size, output, [](unsigned char x) { return static_cast<unsigned short>(x); });
+// }
+
+// inline void convert_ushort_to_uchar(const unsigned short* input, unsigned char* output, size_t size) {
+//     std::transform(input, input + size, output, [](unsigned short x) { return static_cast<unsigned char>(x); });
+// }
 
 
 // Main function
