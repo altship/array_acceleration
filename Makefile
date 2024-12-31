@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -g -Wall -O0 -std=c++23 -mavx2 -march=native -fopenmp -I.
+CFLAGS = -g -Wall -O0 -std=c++23 -march=native -fopenmp
 
 .DEFAULT_GOAL := after_optimize
 .PHONY: clean
